@@ -144,12 +144,12 @@
         </ul>
       `;
 
-      generateAmortizationSchedule(amount, monthlyPrincipalInterest, interestRate, term);
+      generateAmortizationSchedule(amount, monthlyDeduction, interestRate, term);
     }
 
     function generateAmortizationSchedule(principal, monthlyPayment, rate, term) {
       let balance = principal;
-      let html = `<h3 class="text-lg font-semibold mt-4 mb-2">Amortization Schedule (Flat Interest)</h3>
+      let html = `<h3 class="text-lg font-semibold mt-4 mb-2">Amortization Schedule</h3>
         <table class="min-w-full border text-sm">
           <thead>
             <tr class="bg-gray-200">
@@ -161,17 +161,15 @@
           </thead>
           <tbody>`;
 
-      const totalInterest = principal * rate * term;
-      const monthlyInterest = totalInterest / term;
-      const monthlyPrincipal = principal / term;
-
       for (let i = 1; i <= term; i++) {
-        balance -= monthlyPrincipal;
+        const interest = balance * rate;
+        const principalPortion = monthlyPayment - interest;
+        balance -= principalPortion;
         html += `
           <tr>
             <td class="border p-2">${i}</td>
-            <td class="border p-2">Ksh ${monthlyPrincipal.toFixed(2)}</td>
-            <td class="border p-2">Ksh ${monthlyInterest.toFixed(2)}</td>
+            <td class="border p-2">Ksh ${principalPortion.toFixed(2)}</td>
+            <td class="border p-2">Ksh ${interest.toFixed(2)}</td>
             <td class="border p-2">Ksh ${balance > 0 ? balance.toFixed(2) : "0.00"}</td>
           </tr>`;
       }
