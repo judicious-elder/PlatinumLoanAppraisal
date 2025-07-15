@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Platinum Loan Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4 text-sm">
+  <div class="max-w-4xl mx-auto bg-white shadow-lg p-6 rounded-xl">
+    <h2 class="text-2xl font-bold mb-4">Platinum Loan Calculator</h2>
+
+    <!-- Inputs Section -->
+    <div class="grid sm:grid-cols-3 gap-4 mb-4">
+      <div>
+        <label>Basic Salary</label>
+        <input id="basicSalary" type="number" class="w-full border p-2" />
+      </div>
+      <div>
+        <label>Net Salary</label>
+        <input id="netSalary" type="number" class="w-full border p-2" />
+      </div>
+      <div>
+        <label>Other Deductions</label>
+        <input id="deductions" type="number" class="w-full border p-2" />
+      </div>
+    </div>
+    <button onclick="checkQualification()" class="bg-blue-500 text-white px-4 py-2 rounded mb-4">
+      Check Qualification
+    </button>
+    <div id="qualificationResult" class="mb-6 text-lg font-semibold"></div>
+
+    <div class="grid sm:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label>Loan Amount</label>
+        <input id="loanAmount" type="number" min="5000" max="1200000" class="w-full border p-2" oninput="updateLoanTypeFromAmount()" />
+      </div>
+      <div>
+        <label>Loan Duration (Months)</label>
+        <input id="loanTerm" type="number" min="3" max="120" class="w-full border p-2" />
+      </div>
+      <div>
+        <label>Loan Type</label>
+        <select id="loanType" class="w-full border p-2" onchange="adjustLoanTermLimits()">
+          <option value="checkoff">Check-Off</option>
+          <option value="chapchap">Chap Chap</option>
+        </select>
+      </div>
+      <div>
+        <label>Disbursement Mode</label>
+        <select id="disbursement" class="w-full border p-2">
+          <option value="mpesa">M-Pesa</option>
+          <option value="pesalink">Pesa-Link</option>
+          <option value="rtgs">RTGS</option>
+          <option value="cheque">Cheque</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="calculateLoan()" class="bg-green-600 text-white px-4 py-2 rounded">
+      Calculate Loan
+    </button>
+    <button onclick="window.print()" class="ml-2 bg-gray-700 text-white px-4 py-2 rounded">
+      Print / Save as PDF
+    </button>
+
+    <div id="results" class="mt-6 text-lg font-medium"></div>
+    <div id="amortizationTable" class="mt-4 overflow-x-auto"></div>
+  </div>
+
+  <script>
+    function checkQualification() {
+      const basic = parseFloat(document.getElementById('basicSalary').value) || 0;
+      const net = parseFloat(document.getElementById('netSalary').value) || 0;
+      const deductions = parseFloat(document.getElementById('deductions').value) || 0;
+      const threshold = basic / 3;
+      const normalAbility = net - threshold - deductions;
+      const result = document.getElementById('qualificationResult');
+      result.innerText = `Normal Ability: Ksh ${normalAbility.toFixed(2)} - ${normalAbility >= 0 ? 'QUALIFIES ✅' : 'DOES NOT QUALIFY ❌'}`;
+    }
+
+    function updateLoanTypeFromAmount() {
+      const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
+      const loanType = document.getElementById('loanType');
+      if (amount >= 5000 && amount <= 9000) loanType.value = 'chapchap';
+      if (amount >= 10000 && amount <= 1200000) loanType.value = 'checkoff';
+      adjustLoanTermLimits();
+    }
+
+    function adjustLoanTermLimits() {
+      const type = document.getElementById('loanType').value;
+      const term = document.getElementById('loanTerm');
+      term.max = type === 'chapchap' ? 48 : 120;
+      if (parseInt(term.value) > term.max) term.value = term.max;
+    }
+
+    function getInterestRate(term, type) {
+      const rates = {
+        checkoff: { 3: 5.8352, 12: 5.2964, 24: 4.4260, 48: 2.8797, 120: 2.3500 },
+        chapchap: { 3: 6.1911, 12: 5.7407, 24: 4.8704, 48: 3.1019 }
+      };
+      return rates[type][term] || 5.5;
+    }
+
+    function getDisbursementFee(mode, amount) {
+      if (mode === 'mpesa') return amount <= 150000 ? 23 : 46;
+      if (mode === 'pesalink') return 60;
+      if (mode === 'rtgs') return 126;
+      if (mode === 'cheque') return 120;
+      return 0;
+    }
+
+    function calculateLoan() {
+      const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
+      const term = parseInt(document.getElementById('loanTerm').value) || 0;
+      const type = document.getElementById('loanType').value;
+      const disburse = document.getElementById('disbursement').value;
+      const results = document.getElementById('results');
+
+      const appraisal = 0.125 * amount;
+      const exciseAppraisal = 0.20 * appraisal;
+      const interestRate = getInterestRate(term, type) / 100;
+
+      const monthlyCollection = type === 'chapchap' ? 90 : 200;
+      const exciseCollection = monthlyCollection * 0.20;
+
+      const disbursementFee = getDisbursementFee(disburse, amount);
+
+      const monthlyPrincipalInterest = (amount + appraisal) * interestRate;
+      const monthlyDeduction = monthlyPrincipalInterest + monthlyCollection + exciseCollection;
+
+      const takeHome = amount - exciseAppraisal - disbursementFee;
+
+      results.innerHTML = `
+        <p>Monthly Deduction: <strong>Ksh ${monthlyDeduction.toFixed(2)}</strong></p>
+        <p>Take Home Amount: <strong>Ksh ${takeHome.toFixed(2)}</strong></p>
+        <p>Breakdown:</p>
+        <ul class="list-disc ml-6">
+          <li>Principal + Interest per Month: Ksh ${monthlyPrincipalInterest.toFixed(2)}</li>
+          <li>Monthly Collection Fee: Ksh ${monthlyCollection.toFixed(2)}</li>
+          <li>Excise Duty on Monthly Fee (20%): Ksh ${exciseCollection.toFixed(2)}</li>
+          <li>Appraisal Fee: Ksh ${appraisal.toFixed(2)}</li>
+          <li>Excise Duty (Appraisal Fee): Ksh ${exciseAppraisal.toFixed(2)}</li>
+          <li>Disbursement Fee: Ksh ${disbursementFee.toFixed(2)}</li>
+        </ul>
+      `;
+
+      generateAmortizationSchedule(amount, monthlyPrincipalInterest, interestRate, term);
+    }
+
+    function generateAmortizationSchedule(principal, monthlyPayment, rate, term) {
+      let balance = principal;
+      let html = `<h3 class="text-lg font-semibold mt-4 mb-2">Amortization Schedule (Flat Interest)</h3>
+        <table class="min-w-full border text-sm">
+          <thead>
+            <tr class="bg-gray-200">
+              <th class="border p-2">Month</th>
+              <th class="border p-2">Principal</th>
+              <th class="border p-2">Interest</th>
+              <th class="border p-2">Balance</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+      const totalInterest = principal * rate * term;
+      const monthlyInterest = totalInterest / term;
+      const monthlyPrincipal = principal / term;
+
+      for (let i = 1; i <= term; i++) {
+        balance -= monthlyPrincipal;
+        html += `
+          <tr>
+            <td class="border p-2">${i}</td>
+            <td class="border p-2">Ksh ${monthlyPrincipal.toFixed(2)}</td>
+            <td class="border p-2">Ksh ${monthlyInterest.toFixed(2)}</td>
+            <td class="border p-2">Ksh ${balance > 0 ? balance.toFixed(2) : "0.00"}</td>
+          </tr>`;
+      }
+      html += `</tbody></table>`;
+      document.getElementById("amortizationTable").innerHTML = html;
+    }
+  </script>
+</body>
+</html>
